@@ -41,7 +41,7 @@ INSTALLED_APPS = [
 'django.contrib.messages',
 'django.contrib.staticfiles',
 'drively_app',
-'',
+'gunicorn',
 'rest_framework',
 'django_filters',
 'corsheaders'
