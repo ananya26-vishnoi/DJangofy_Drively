@@ -17,6 +17,8 @@ from rest_framework import filters, generics
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.core.mail import send_mail
+import string
+import random
 
 #create the user
 
@@ -34,7 +36,7 @@ def create_user(request):
         return Response({"error": "Email already exists"}, status=status.HTTP_400_BAD_REQUEST)
 
     # Create a new user
-    user = User(name=name, email=email, password=password)
+    user = User(name=name, email=email, password=password, role="user")
     user.save()
 
     # Serialize the user data
@@ -46,6 +48,17 @@ def create_user(request):
 
 @api_view(['POST'])
 def login_user(request):
+    if "token_value" not in request.data:
+        token_value=request.data["token_value"]
+        if Token.objects.filter(token_value=token_value).exists():
+            token=Token.objects.get(token_value=token_value)
+            user_id=token.user_id.id
+            user=User.objects.get(id=user_id)
+            user_serializer=UserSerializer(user)
+            token_serializer=TokenSerializer(token)
+            return Response({"user":user_serializer.data,"token":token_serializer.data},status=status.HTTP_200_OK)
+        else:
+            return Response({"error":"token does not exist"},status=status.HTTP_400_BAD_REQUEST)
     if "email" not in request.data or "password" not in request.data:
         return Response({"error": "email and password are required"}, status=status.HTTP_400_BAD_REQUEST)
     email = request.data["email"]
@@ -53,9 +66,14 @@ def login_user(request):
 
     if not User.objects.filter(email=email, password=password).exists():
         return Response({"error": "email and password wrong"}, status=status.HTTP_400_BAD_REQUEST)
-    user=User.objects.get(email=email, password=password)
-    user_serializer = UserSerializer(user)
-    return Response(user_serializer.data, status=status.HTTP_200_OK)
+    user=User.objects.get(email=email)
+    token_value = ''.join(random.choices(string.ascii_uppercase +string.digits, k=15))
+    token=Token.objects.create(user_id=user,token_value=token_value)
+    token.save()
+    user_serializer=UserSerializer(user)
+    token_serializer=TokenSerializer(token)
+    return Response({"user":user_serializer.data,"token":token_serializer.data},status=status.HTTP_200_OK)
+ 
 
 @api_view(['PUT'])
 def update_user(request):
