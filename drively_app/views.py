@@ -44,7 +44,7 @@ def create_user(request):
     return Response({"user": user_serializer.data}, status=status.HTTP_201_CREATED)
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def login_user(request):
     if "email" not in request.data or "password" not in request.data:
         return Response({"error": "email and password are required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -67,12 +67,13 @@ def update_user(request):
     email=request.data["email"]
     password=request.data["password"]
 
+
     if not User.objects.filter(email=email).exists():
         return Response({"error":"email id wrong"},status=status.HTTP_400_BAD_REQUEST)
 
-    if "password" in request.data:
-        password=request.data["password"]
-        User.objects.filter(email=email).update(password=password)
+    if "new_password" in request.data:
+        new_password=request.data["new_password"]
+        User.objects.filter(email=email).update(password=new_password)
 
     if "name" in request.data:
         name=request.data["name"]
@@ -94,19 +95,59 @@ def delete_user(request):
 
     if not User.objects.filter(email=email, password=password).exists():
         return Response({"error":"profile does not exist"}, status=status.HTTP_400_BAD_REQUEST)
-    user=User.objects.get(email=email, password=password)
     User.objects.filter(email=email).delete()
     return Response({"success": "user deleted"}, status=status.HTTP_200_OK)
 
         
-@api_view(['POST'])
+@api_view(['GET'])
 def file_upload(request):
-    if request.method == 'POST':
-        form = File(request.POST,request.FILES)
-        if form.is_valid():
-            form.save()
-            return HttpResponse('The file is saved')
-    else:
-        form = File()
-    context = {'form':form,}
-    return render(request, 'upload.html', context)
+    if "myfile" not in request.FILES:
+        return Response({"error": "file is required"}, status=status.HTTP_400_BAD_REQUEST)
+    if "email" not in request.data:
+        return Response({"error": "email is required"}, status=status.HTTP_400_BAD_REQUEST)
+    email=request.data["email"]
+    file_=request.FILES["myfile"]
+    if not User.objects.filter(email=email).exists():
+        return Response({"error": "email id wrong"}, status=status.HTTP_400_BAD_REQUEST)
+    if File.objects.filter(file_name=file_).exists():
+        File.objects.filter(file_name=file_).update(file_name=file_)
+        file_serializer=FileSerializer(file_)
+        return Response({"success": "file updated"}, status=status.HTTP_200_OK)
+    
+    user=User.objects.get(email=email)
+    file=File(file_name=file_,user=user)
+    file.save()
+    file_serializer=FileSerializer(file)
+    return Response(file_serializer.data,status=status.HTTP_200_OK)
+
+@api_view(['DELETE'])
+def file_delete(request):
+    if "email" not in request.data:
+        return Response({"error": "email is required"}, status=status.HTTP_400_BAD_REQUEST)
+    if "myfile" not in request.FILES:
+        return Response({"error": "file is required"}, status=status.HTTP_400_BAD_REQUEST)
+    email = request.data["email"]
+    file_ = request.data["myfile"]
+
+    if not User.objects.filter(email=email).exists():
+        return Response({"error":"profile does not exist"}, status=status.HTTP_400_BAD_REQUEST)
+    user=User.objects.get(email=email)
+    file=File(file_name=file_,user=user)
+    File.objects.filter(file_name=file_).delete()
+    file.save()
+    file_serializer=FileSerializer(file)
+    return Response({"success": "file deleted"}, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+def get_all_files(request):
+    if "email" not in request.data:
+        return Response({"error": "email is required"}, status=status.HTTP_400_BAD_REQUEST)
+    email=request.data["email"]
+    if not User.objects.filter(email=email).exists():
+        return Response({"error": "email id wrong"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    
+    file_serializer=FileSerializer(file,many=True)
+    return Response(file_serializer.data,status=status.HTTP_200_OK)
+
+   
