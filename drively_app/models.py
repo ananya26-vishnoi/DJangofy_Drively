@@ -5,8 +5,8 @@ class User(models.Model):
     email = models.EmailField()
     password = models.CharField(max_length=1000)
     token_value = models.CharField(max_length=1000)
-    email_token = models.CharField(max_length=1000)
-    is_verified=models.BooleanField(default=False)
+    otp = models.CharField(max_length=6, null=True, blank=True)
+    is_email_verified = models.BooleanField(default=False)
 
 class File(models.Model):
     file_name = models.FileField(upload_to='files/')

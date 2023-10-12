@@ -52,8 +52,8 @@ def create_user(request):
     send_mail(
         'OTP Verification',
         f'Your OTP for registration is: {otp}',
-        "your_email@gmail.com",  # Replace with your sender email
-        ["vishnoi.ananya.2016635@gmail.com"],
+        "vishnoi.ananya.2016635@gmail.com",  # Replace with your sender email
+        ["ananyavishnoi26@gmail.com"],
         fail_silently=False,
     )
     # Serialize the user data
@@ -61,6 +61,9 @@ def create_user(request):
 
     # Return a success response
     return Response({"user": user_serializer.data, "message": "User created. Check your email for OTP verification."}, status=status.HTTP_201_CREATED)
+
+def email_is_verified(self):
+    return self.is_email_verified
 
 @api_view(['POST'])
 def login_user(request):
@@ -197,7 +200,7 @@ def verify_otp(request):
     except User.DoesNotExist:
         return Response({"error": "User with this email does not exist"}, status=status.HTTP_404_NOT_FOUND)
 
-    if user.otp == entered_otp:
+    if str(user.otp) == str(entered_otp):
         # OTP matches, mark the email as verified and clear the OTP
         user.is_email_verified = True
         user.otp = None
