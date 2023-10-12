@@ -21,11 +21,11 @@ import string
 import random
 
 #create the user
+def generate_otp():
+    return str(random.randint(100000, 999999))
 
 @api_view(['POST'])
 def create_user(request):
-
-    
     if "name" not in request.data or "email" not in request.data or "password" not in request.data:
         return Response({"error": "name,email and password are required"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -53,14 +53,14 @@ def create_user(request):
         'OTP Verification',
         f'Your OTP for registration is: {otp}',
         "your_email@gmail.com",  # Replace with your sender email
-        [email],
+        ["vishnoi.ananya.2016635@gmail.com"],
         fail_silently=False,
     )
     # Serialize the user data
     user_serializer = UserSerializer(user)
 
     # Return a success response
-    return Response({"user": user_serializer.data}, status=status.HTTP_201_CREATED)
+    return Response({"user": user_serializer.data, "message": "User created. Check your email for OTP verification."}, status=status.HTTP_201_CREATED)
 
 @api_view(['POST'])
 def login_user(request):
@@ -184,30 +184,24 @@ def get_all_files(request):
         file_serializer=FileSerializer(file,many=True)
         return Response(file_serializer.data,status=status.HTTP_200_OK)
     
-@api_view(['GET'])
-def otp_verification(request):
-    if "token_value" in request.data:
-        token_value=request.data["token_value"]
-        if User.objects.filter(token_value=token_value).exists():
-            user=User.objects.get(token_value=token_value)
-            user_serializer=UserSerializer(user)
-    if "email" in request.data:
-        email=request.data["email"]
-        if User.objects.filter(email=email).exists():
-            user=User.objects.get(email=email)
-            user_serializer=UserSerializer(user)
-            otp = ''.join(random.choices(string.digits, k=6))
-            send_mail(
-                'OTP Verification',
-                'Your OTP is '+otp,
+@api_view(['POST'])
+def verify_otp(request):
+    if "email" not in request.data or "otp" not in request.data:
+        return Response({"error": "Email and OTP are required"}, status=status.HTTP_400_BAD_REQUEST)
 
-                "vishnoi.ananya.2016635@gmail.com",
-                [email],
-                fail_silently=False,
-            )
-            return Response({"otp":"otp has been sent on your mail. Please check"},status=status.HTTP_200_OK)
-        else:
-            return Response({"error":"email does not exist"},status=status.HTTP_400_BAD_REQUEST)
+    email = request.data["email"]
+    entered_otp = request.data["otp"]
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({"error": "User with this email does not exist"}, status=status.HTTP_404_NOT_FOUND)
+
+    if user.otp == entered_otp:
+        # OTP matches, mark the email as verified and clear the OTP
+        user.is_email_verified = True
+        user.otp = None
+        user.save()
+        return Response({"message": "Email has been successfully verified."}, status=status.HTTP_200_OK)
     else:
-        return Response({"error":"email is required"},status=status.HTTP_400_BAD_REQUEST)
-    
+        return Response({"error": "Invalid OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
