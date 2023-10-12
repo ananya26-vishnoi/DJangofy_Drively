@@ -43,6 +43,19 @@ def create_user(request):
     user.token_value=token_value 
     user.save()
 
+
+    otp = generate_otp()
+    user.otp = otp
+    user.save()
+
+    # Send the OTP to the user's email
+    send_mail(
+        'OTP Verification',
+        f'Your OTP for registration is: {otp}',
+        "your_email@gmail.com",  # Replace with your sender email
+        [email],
+        fail_silently=False,
+    )
     # Serialize the user data
     user_serializer = UserSerializer(user)
 
@@ -56,7 +69,10 @@ def login_user(request):
         if User.objects.filter(token_value=token_value).exists():
             user=User.objects.get(token_value=token_value)
             user_serializer=UserSerializer(user)
-            return Response({"user":user_serializer.data},status=status.HTTP_200_OK)
+            if user.is_email_verified:
+                return Response({"user": user_serializer.data, "message": "Logged in successfully."}, status=status.HTTP_200_OK)
+            else:
+                return Response({"error": "Email is not verified. Please verify your email with the OTP sent to your inbox."}, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response({"error":"token does not exist"},status=status.HTTP_400_BAD_REQUEST)
     if "email" not in request.data or "password" not in request.data:
